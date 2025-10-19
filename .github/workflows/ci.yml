@@ -11,7 +11,7 @@ jobs:
       - run: npm ci || npm i
       - run: npx hardhat compile
       - run: npm test --silent
-      - run: node scanner/index.js --src contracts --out reports/ci --format both
+      - run: node scanner/index.cjs --src contracts --out reports/ci --format both
       - uses: actions/upload-artifact@v4
         with:
           name: scan-report
