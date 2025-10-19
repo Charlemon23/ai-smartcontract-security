@@ -1,0 +1,20 @@
+{
+  "name": "ai-smartcontract-security",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "scan": "node scanner/index.js --src contracts --out reports/local --format both"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "chai": "^4.4.1",
+    "ethers": "^6.13.0",
+    "hardhat": "^2.22.10",
+    "jest": "^29.7.0",
+    "solc": "^0.8.29"
+  },
+  "license": "MIT"
+}

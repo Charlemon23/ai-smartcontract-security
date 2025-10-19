@@ -1,0 +1,13 @@
+{
+  "name": "AI Smart Contract Security",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "postCreateCommand": "npm ci || npm i",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "nomicfoundation.hardhat-solidity",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}
