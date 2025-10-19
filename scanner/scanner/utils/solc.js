@@ -1,6 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
-import solc from "solc";
+const fs = require("fs");
+const path = require("path");
+const solc = require("solc");
 
 export function readSolidityFiles(srcDir) {
   const files = [];
