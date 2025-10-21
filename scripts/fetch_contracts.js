@@ -27,10 +27,14 @@ async function sleep(ms) {
 async function getLatestBlock() {
   try {
     const url = `${API_BASE}?module=proxy&action=eth_blockNumber&apikey=${ETHERSCAN_API_KEY}`;
-    const { data } = await axios.get(url);
+    console.log(`Fetching latest block number from: ${url}`);
+    const { data } = await axios.get(url, { family: 4 }); // Force IPv4 to prevent DNS issues
+    console.log("Etherscan response:", data);
+
     if (data && data.result) {
       return parseInt(data.result, 16);
     } else {
+      console.error("⚠️ Invalid response from Etherscan:", data);
       throw new Error("Could not retrieve latest block number");
     }
   } catch (err) {
@@ -38,6 +42,7 @@ async function getLatestBlock() {
     return null;
   }
 }
+
 
 async function fetchContracts(startBlock, endBlock) {
   const url = `${API_BASE}?module=contract&action=getsourcecode&startblock=${startBlock}&endblock=${endBlock}&sort=asc&apikey=${ETHERSCAN_API_KEY}`;
