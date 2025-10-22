@@ -47,7 +47,7 @@ function findSlither() {
 console.log(chalk.cyanBright("\n=== AI Smart Contract Security Testbed ==="));
 console.log(chalk.gray(`[${new Date().toISOString()}] Starting analysis...`));
 
-const slitherCmd = findSlither();
+const slitherCmd = "python3 -m slither";
 console.log(chalk.gray(`Using analyzer: ${slitherCmd}\n`));
 
 // === Load dataset ===
