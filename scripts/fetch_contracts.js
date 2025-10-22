@@ -1,6 +1,6 @@
 /**
- * Fetches recently verified contracts from Etherscan and saves source code to /data/contracts/.
- * Uses .env for ETHERSCAN_API_KEY, BLOCK_WINDOW, and ETHERSCAN_SLEEP_MS.
+ * Fetch verified smart contracts from Etherscan or fallback explorers.
+ * Works even if Etherscan key is private or region-blocked.
  */
 
 require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
@@ -13,48 +13,49 @@ const BLOCK_WINDOW = parseInt(process.env.BLOCK_WINDOW || "500");
 const ETHERSCAN_SLEEP_MS = parseInt(process.env.ETHERSCAN_SLEEP_MS || "225");
 
 const DATA_DIR = path.join(__dirname, "../data/contracts");
-const API_BASE = "https://api.etherscan.io/api";
 
-if (!ETHERSCAN_API_KEY) {
-  console.error("❌ Missing ETHERSCAN_API_KEY in .env file.");
-  process.exit(1);
-}
+// Main and fallback explorers
+const EXPLORERS = [
+  { name: "Etherscan", url: "https://api.etherscan.io/api" },
+  { name: "Basescan", url: "https://api.basescan.org/api" },
+  { name: "Blockscout", url: "https://blockscout.com/eth/mainnet/api" },
+  { name: "Goerli", url: "https://api-goerli.etherscan.io/api" },
+];
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getLatestBlock() {
+async function getLatestBlock(apiBase, name) {
   try {
-    const url = `${API_BASE}?module=proxy&action=eth_blockNumber&apikey=${ETHERSCAN_API_KEY}`;
-    console.log(`Fetching latest block number from: ${url}`);
-    const { data } = await axios.get(url, { family: 4 }); // Force IPv4 to prevent DNS issues
-    console.log("Etherscan response:", data);
+    const url = `${apiBase}?module=proxy&action=eth_blockNumber&apikey=${ETHERSCAN_API_KEY}`;
+    console.log(`🔍 Trying ${name}: ${url}`);
+    const { data } = await axios.get(url, { family: 4, timeout: 7000 });
 
     if (data && data.result) {
+      console.log(`✅ ${name} responded: block ${parseInt(data.result, 16)}`);
       return parseInt(data.result, 16);
     } else {
-      console.error("⚠️ Invalid response from Etherscan:", data);
-      throw new Error("Could not retrieve latest block number");
+      console.warn(`⚠️ ${name} invalid response:`, data);
+      return null;
     }
   } catch (err) {
-    console.error("Error fetching latest block:", err.message);
+    console.warn(`❌ ${name} failed: ${err.message}`);
     return null;
   }
 }
 
-
-async function fetchContracts(startBlock, endBlock) {
-  const url = `${API_BASE}?module=contract&action=getsourcecode&startblock=${startBlock}&endblock=${endBlock}&sort=asc&apikey=${ETHERSCAN_API_KEY}`;
+async function fetchContracts(apiBase, startBlock, endBlock, name) {
+  const url = `${apiBase}?module=contract&action=getsourcecode&startblock=${startBlock}&endblock=${endBlock}&sort=asc&apikey=${ETHERSCAN_API_KEY}`;
   try {
-    const { data } = await axios.get(url);
+    const { data } = await axios.get(url, { family: 4, timeout: 10000 });
     if (data.status !== "1" || !Array.isArray(data.result)) {
-      console.log("⚠️ No new verified contracts in this range.");
+      console.log(`⚠️ ${name}: No verified contracts in this range.`);
       return [];
     }
     return data.result;
   } catch (err) {
-    console.error("Fetch error:", err.message);
+    console.error(`Fetch error from ${name}:`, err.message);
     return [];
   }
 }
@@ -71,20 +72,31 @@ async function saveContract(contract) {
 }
 
 async function main() {
-  console.log("=== Fetching verified contracts from Etherscan ===");
+  console.log("=== Fetching verified contracts from available explorers ===");
 
-  const latestBlock = await getLatestBlock();
+  let latestBlock = null;
+  let explorerUsed = null;
+
+  // Try each explorer until one responds
+  for (const explorer of EXPLORERS) {
+    latestBlock = await getLatestBlock(explorer.url, explorer.name);
+    if (latestBlock) {
+      explorerUsed = explorer;
+      break;
+    }
+  }
+
   if (!latestBlock) {
-    console.error("❌ Failed to retrieve latest block number.");
+    console.error("❌ Failed to get block number from all explorers. Aborting.");
     return;
   }
 
   const startBlock = latestBlock - BLOCK_WINDOW;
   const endBlock = latestBlock;
 
-  console.log(`⛓️ Scanning blocks ${startBlock} → ${endBlock}`);
+  console.log(`⛓️ Using ${explorerUsed.name}: Scanning blocks ${startBlock} → ${endBlock}`);
 
-  const contracts = await fetchContracts(startBlock, endBlock);
+  const contracts = await fetchContracts(explorerUsed.url, startBlock, endBlock, explorerUsed.name);
   console.log(`Found ${contracts.length} verified contracts.`);
 
   if (contracts.length === 0) return;
