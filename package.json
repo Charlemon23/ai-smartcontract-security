@@ -1,49 +1,35 @@
 {
   "name": "ai-smartcontract-security",
   "version": "1.0.0",
-  "description": "AI-Enhanced Smart Contract Security Testbed and Vulnerability Analyzer. Pulls verified contracts, runs Slither/Mythril analysis, and aggregates findings.",
-  "main": "hardhat.config.js",
+  "description": "AI-Enhanced Smart Contract Security Testbed — analyzes Solidity contracts using Slither with hybrid (live/offline) pipeline and summarized vulnerability reports.",
+  "main": "scripts/run_pipeline.js",
   "type": "commonjs",
   "scripts": {
-    "test": "npx hardhat test",
-    "fetch:contracts": "node data_pipeline/fetch_contracts.js",
-    "scan:contracts": "node scanner/analyze_contracts.js",
-    "run:pipeline": "node scripts/run_pipeline.js",
-    "lint": "npx eslint . --ext .js,.ts",
-    "clean": "rm -rf data/contracts data/reports data/tmp"
+    "run:pipeline": "node scripts/run_pipeline.js && npm run summarize:reports",
+    "summarize:reports": "node scripts/summarize_reports.js",
+    "clean": "rm -rf data/reports/*.json data/reports/*.md data/contracts/offline_seed"
   },
   "keywords": [
     "solidity",
-    "hardhat",
     "smart-contracts",
     "security",
+    "slither",
     "etherscan",
-    "AI",
-    "vulnerability-detection"
+    "blockchain",
+    "ai",
+    "vulnerability-analysis"
   ],
   "author": "Charlemon London",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.7.4",
+    "axios": "^1.7.3",
     "dotenv": "^16.4.5",
-    "ethers": "^6.13.0",
     "fs-extra": "^11.2.0",
-    "p-limit": "^4.0.0"
+    "path": "^0.12.7"
   },
   "devDependencies": {
-    "hardhat": "^2.22.1",
-    "chai": "^4.3.10",
-    "mocha": "^10.4.0",
-    "eslint": "^9.9.0",
-    "jest": "^29.7.0"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "verbose": true
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Charlemon23/ai-smartcontract-security.git"
+    "eslint": "^9.5.0",
+    "prettier": "^3.3.3"
   },
   "engines": {
     "node": ">=18.0.0"
