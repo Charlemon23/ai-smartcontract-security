@@ -28,19 +28,52 @@ async function sleep(ms) {
 
 async function getLatestBlock(apiBase, name) {
   try {
-    const url = `${apiBase}?module=proxy&action=eth_blockNumber&apikey=${ETHERSCAN_API_KEY}`;
-    console.log(`🔍 Trying ${name}: ${url}`);
-    const { data } = await axios.get(url, { family: 4, timeout: 7000 });
+    // fallback: use a public RPC instead of Etherscan if the API key call fails
+    const rpcEndpoints = [
+      "https://eth-mainnet.g.alchemy.com/v2/demo",
+      "https://rpc.ankr.com/eth",
+      "https://cloudflare-eth.com"
+    ];
 
-    if (data && data.result) {
+    // For Etherscan/Basescan etc.
+    const etherscanUrl = `${apiBase}?module=proxy&action=eth_blockNumber&apikey=${ETHERSCAN_API_KEY}`;
+    console.log(`🔍 Trying ${name}: ${etherscanUrl}`);
+
+    let data;
+    try {
+      const res = await axios.get(etherscanUrl, { family: 4, timeout: 7000 });
+      data = res.data;
+    } catch (e) {
+      console.warn(`⚠️ ${name} Etherscan call failed, switching to public RPC`);
+    }
+
+    // If Etherscan fails or returns invalid, try public RPC fallback
+    if (!data || !data.result) {
+      for (const rpc of rpcEndpoints) {
+        try {
+          console.log(`🌐 Trying RPC fallback: ${rpc}`);
+          const { data: rpcData } = await axios.post(
+            rpc,
+            { jsonrpc: "2.0", method: "eth_blockNumber", params: [], id: 1 },
+            { headers: { "Content-Type": "application/json" }, timeout: 7000 }
+          );
+          if (rpcData && rpcData.result) {
+            console.log(`✅ ${name || "RPC"} responded: block ${parseInt(rpcData.result, 16)}`);
+            return parseInt(rpcData.result, 16);
+          }
+        } catch (rpcErr) {
+          console.warn(`❌ RPC ${rpc} failed: ${rpcErr.message}`);
+        }
+      }
+    } else if (data && data.result) {
       console.log(`✅ ${name} responded: block ${parseInt(data.result, 16)}`);
       return parseInt(data.result, 16);
-    } else {
-      console.warn(`⚠️ ${name} invalid response:`, data);
-      return null;
     }
+
+    console.error(`⚠️ ${name} did not return valid block data.`);
+    return null;
   } catch (err) {
-    console.warn(`❌ ${name} failed: ${err.message}`);
+    console.error("Error fetching latest block:", err.message);
     return null;
   }
 }
