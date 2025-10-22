@@ -75,14 +75,15 @@ for (const contract of contracts) {
   console.log(chalk.blueBright(`🔍 Analyzing ${contract}...`));
   try {
     // Run Slither safely
-    execSync(`${slitherCmd} "${contractPath}" --json "${reportPath}"`, {
-      stdio: "pipe",
-      env: {
-        ...process.env,
-        PATH: `${process.env.PATH}:/home/codespace/.local/bin:/usr/local/bin:/usr/bin`,
-      },
-      encoding: "utf8",
-    });
+    // Use shell-based invocation to inherit full environment
+execSync(
+  `bash -c "python3 -m slither '${contractPath}' --json '${reportPath}'"`,
+  {
+    stdio: "inherit",
+    env: process.env,
+  }
+);
+
 
     console.log(chalk.greenBright(`✅ Analysis complete: ${contract}`));
     results.push({ contract, report: reportPath, status: "success" });
