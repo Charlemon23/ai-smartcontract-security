@@ -9,7 +9,7 @@
     "run:pipeline": "node scripts/run_pipeline.js",
     "import:dataset": "node scripts/import_dataset.js",
     "analyze:single": "node scripts/analyze_single.js",
-    "summarize:reports": "node scripts/summarize_reports.js"
+    "summarize:reports": "node scripts/summarize_reports.js",
     "clean": "rm -rf data/contracts/imported data/reports/* tmp/* || true",
     "lint": "eslint . --ext .js",
     "test": "echo 'No tests defined yet.'"
