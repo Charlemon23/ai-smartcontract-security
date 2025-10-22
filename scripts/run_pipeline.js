@@ -3,7 +3,8 @@
  * Live fetch -> else offline -> else auto-seed and analyze.
  */
 
-require("dotenv").config();
+import dotenv from "dotenv";
+dotenv.config();
 const fs = require("fs-extra");
 const path = require("path");
 const axios = require("axios");
