@@ -6,91 +6,115 @@ import chalk from "chalk";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 
-// Fix __dirname since ES modules don’t define it
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
+// === Load environment variables ===
 dotenv.config();
 
-// --- Basic paths ---
 const CONTRACTS_DIR = path.join(__dirname, "../data/contracts/offline_seed");
 const REPORTS_DIR = path.join(__dirname, "../data/reports");
+const SUMMARY_PATH = path.join(REPORTS_DIR, "summary.json");
 
-// --- Utility: Check if Slither is installed ---
-function slitherInstalled() {
-  try {
-    execSync("slither --version", { stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// --- Step 1: Initialization ---
-console.log(chalk.cyanBright("\n=== AI Smart Contract Security Testbed ==="));
-console.log(chalk.gray(`[${new Date().toISOString()}] Starting analysis...`));
-
-// Ensure directories exist
 fs.ensureDirSync(CONTRACTS_DIR);
 fs.ensureDirSync(REPORTS_DIR);
 
-// --- Step 2: Verify Slither availability ---
-if (!slitherInstalled()) {
-  console.log(
-    chalk.redBright(
-      "\n❌ Slither not detected. Please install using:\n   pip install slither-analyzer --break-system-packages\n"
-    )
-  );
-  process.exit(1);
+// === Utility: Detect Slither executable ===
+function findSlither() {
+  try {
+    const direct = execSync("which slither", { encoding: "utf8" }).trim();
+    if (direct) return direct;
+  } catch {}
+
+  // Fallback for virtual environments
+  const candidates = [
+    "~/.local/bin/slither",
+    "/usr/local/bin/slither",
+    "/usr/bin/slither",
+  ];
+
+  for (const pathGuess of candidates) {
+    if (fs.existsSync(pathGuess.replace("~", process.env.HOME))) {
+      return pathGuess.replace("~", process.env.HOME);
+    }
+  }
+
+  // Last resort: Python fallback
+  return "python3 -m slither";
 }
 
-// --- Step 3: Load dataset ---
+// === Pipeline start ===
+console.log(chalk.cyanBright("\n=== AI Smart Contract Security Testbed ==="));
+console.log(chalk.gray(`[${new Date().toISOString()}] Starting analysis...`));
+
+const slitherCmd = findSlither();
+console.log(chalk.gray(`Using analyzer: ${slitherCmd}\n`));
+
+// === Load dataset ===
 const contracts = fs
   .readdirSync(CONTRACTS_DIR)
-  .filter((file) => file.endsWith(".sol"));
+  .filter((f) => f.endsWith(".sol"));
 
 if (contracts.length === 0) {
   console.log(chalk.yellow("⚠️  No Solidity contracts found in dataset."));
-  console.log(
-    chalk.gray(
-      "Tip: Run `npm run import:dataset` to download verified contracts first.\n"
-    )
-  );
+  console.log(chalk.gray("Tip: Run `npm run import:dataset` to seed contracts.\n"));
   process.exit(0);
 }
 
-console.log(chalk.green(`\n🧩 Loaded ${contracts.length} contracts.`));
+console.log(chalk.green(`🧩 Loaded ${contracts.length} contracts.\n`));
 
-// --- Step 4: Run analysis ---
+// === Analyze each contract ===
+const results = [];
 for (const contract of contracts) {
   const contractPath = path.join(CONTRACTS_DIR, contract);
-  const reportFile = path.join(
+  const reportPath = path.join(
     REPORTS_DIR,
     `report_${path.basename(contract, ".sol")}.json`
   );
 
+  console.log(chalk.blueBright(`🔍 Analyzing ${contract}...`));
   try {
-    console.log(chalk.blueBright(`\n🔍 Analyzing ${contract}...`));
-    execSync(`slither ${contractPath} --json ${reportFile}`, {
-      stdio: "ignore"
+    // Run Slither safely
+    execSync(`${slitherCmd} "${contractPath}" --json "${reportPath}"`, {
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        PATH: `${process.env.PATH}:/home/codespace/.local/bin:/usr/local/bin:/usr/bin`,
+      },
+      encoding: "utf8",
     });
-    console.log(chalk.greenBright(`✅  Report saved: ${reportFile}`));
+
+    console.log(chalk.greenBright(`✅ Analysis complete: ${contract}`));
+    results.push({ contract, report: reportPath, status: "success" });
   } catch (err) {
-    console.log(chalk.red(`❌  Error analyzing ${contract}: ${err.message}`));
+    console.log(chalk.red(`❌ Error analyzing ${contract}`));
+
+    // Parse common errors for cleaner logs
+    const message =
+      err.stderr?.toString() ||
+      err.stdout?.toString() ||
+      err.message ||
+      "Unknown error";
+
+    fs.writeFileSync(
+      reportPath.replace(".json", "_error.log"),
+      message.substring(0, 5000)
+    );
+
+    results.push({ contract, report: reportPath, status: "failed" });
   }
 }
 
-// --- Step 5: Summarize results ---
+// === Save summary ===
 const summary = {
   timestamp: new Date().toISOString(),
   totalContracts: contracts.length,
-  reports: contracts.map((file) => ({
-    name: file,
-    report: `data/reports/report_${path.basename(file, ".sol")}.json`
-  }))
+  successful: results.filter((r) => r.status === "success").length,
+  failed: results.filter((r) => r.status === "failed").length,
+  reports: results,
 };
 
-fs.writeJsonSync(path.join(REPORTS_DIR, "summary.json"), summary, { spaces: 2 });
-console.log(chalk.magentaBright("\n📄 Summary saved to data/reports/summary.json"));
-console.log(chalk.green("\n✅ Pipeline complete.\n"));
+fs.writeJsonSync(SUMMARY_PATH, summary, { spaces: 2 });
+
+console.log(chalk.magentaBright(`\n📄 Summary saved: ${SUMMARY_PATH}`));
+console.log(chalk.green(`\n✅ Pipeline complete.\n`));
