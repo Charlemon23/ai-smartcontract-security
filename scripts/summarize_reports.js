@@ -1,62 +1,39 @@
-/**
- * summarize_reports.js
- * Generates a readable vulnerability summary from Slither JSON reports.
- */
-
-import fs from "fs";
+import fs from "fs-extra";
 import path from "path";
 
-const reportsDir = path.join(process.cwd(), "data/reports");
-const outputFile = path.join(reportsDir, "summary_readable.txt");
+const REPORTS_DIR = "data/reports";
+const OUTPUT_FILE = path.join(REPORTS_DIR, "summary_readable.txt");
+
+function classifySeverity(issue) {
+  const text = issue.toLowerCase();
+  if (text.includes("reentrancy") || text.includes("overflow") || text.includes("access control")) return "High";
+  if (text.includes("front-running") || text.includes("unchecked") || text.includes("dos")) return "Medium";
+  if (text.includes("visibility") || text.includes("unused") || text.includes("optimization")) return "Low";
+  return "Informational";
+}
 
 function summarizeReports() {
-  if (!fs.existsSync(reportsDir)) {
-    console.error("❌ Reports directory not found:", reportsDir);
-    return;
-  }
+  console.log("\n=== 🔍 Generating Enhanced Vulnerability Summary ===");
 
-  const files = fs.readdirSync(reportsDir).filter(f => f.endsWith(".json") && f.startsWith("report_"));
-  if (files.length === 0) {
-    console.warn("⚠️ No report JSON files found in:", reportsDir);
-    return;
-  }
+  const reports = fs.readdirSync(REPORTS_DIR).filter(f => f.endsWith(".json"));
+  let summary = "";
 
-  let summaryText = `🧩 Vulnerability Summary (${files.length} Contracts)\n${"-".repeat(60)}\n`;
-  console.log(summaryText);
+  for (const reportFile of reports) {
+    const filePath = path.join(REPORTS_DIR, reportFile);
+    const content = fs.readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(content);
 
-  for (const file of files) {
-    const reportPath = path.join(reportsDir, file);
-    try {
-      const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
-      const contractName = file.replace("report_", "").replace(".json", "");
-      const results = report.results?.detectors || [];
+    const findings = parsed.results?.detectors || [];
+    summary += `\n${parsed.source_mapping?.filename_short || reportFile} → ${findings.length} issues\n`;
 
-      if (results.length === 0) {
-        summaryText += `\n${contractName}.sol → ✅ No issues found\n`;
-        console.log(`✅ ${contractName}.sol → No issues found`);
-        continue;
-      }
-
-      summaryText += `\n${contractName}.sol → ${results.length} issues\n`;
-      console.log(`\n${contractName}.sol → ${results.length} issues`);
-
-      for (const det of results) {
-        const title = det.check || det["check"];
-        const severity = det["impact"] || "N/A";
-        const elements = det["elements"] || [];
-        const source = elements.length > 0 ? elements[0].source_mapping?.filename || "unknown" : "unknown";
-        summaryText += `  • ${title} [Severity: ${severity}] (${path.basename(source)})\n`;
-        console.log(`  • ${title} [Severity: ${severity}]`);
-      }
-
-    } catch (err) {
-      console.error(`❌ Failed to parse ${file}:`, err.message);
+    for (const f of findings) {
+      const severity = classifySeverity(f.check || "");
+      summary += `  • ${f.check} [Severity: ${severity}]\n`;
     }
   }
 
-  // Save summary to file
-  fs.writeFileSync(outputFile, summaryText);
-  console.log(`\n📝 Summary saved to: ${outputFile}`);
+  fs.writeFileSync(OUTPUT_FILE, summary, "utf8");
+  console.log(`\n📝 Summary saved to: ${OUTPUT_FILE}`);
 }
 
 summarizeReports();

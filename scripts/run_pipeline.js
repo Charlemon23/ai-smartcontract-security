@@ -56,5 +56,16 @@ async function main() {
   console.log(`📁 Reports saved in: ${REPORTS_DIR}`);
   console.log(`📝 Summary: ${path.join(REPORTS_DIR, "summary_readable.txt")}`);
 }
+  // 5️⃣ Optional ML Hook (future reinforcement learning or LLM classifier)
+  if (fs.existsSync("./ml/ai_analyzer.js")) {
+    console.log("\n🧠 Invoking AI analyzer module...");
+    try {
+      execSync("node ml/ai_analyzer.js", { stdio: "inherit" });
+    } catch (err) {
+      console.error("⚠️ AI Analyzer module failed:", err.message);
+    }
+  } else {
+    console.log("⚙️ No AI analyzer detected — skipping ML stage.");
+  }
 
 main();
