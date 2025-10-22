@@ -1,121 +1,60 @@
-// scripts/run_pipeline.js
 import fs from "fs-extra";
-import path from "path";
 import { execSync } from "child_process";
-import chalk from "chalk";
-import dotenv from "dotenv";
-import { fileURLToPath } from "url";
+import path from "path";
+import "dotenv/config";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const CONTRACTS_DIR = "data/contracts/offline_seed";
+const REPORTS_DIR = "data/reports";
+const SUMMARY_SCRIPT = "scripts/summarize_reports.js";
 
-// === Load environment variables ===
-dotenv.config();
-
-const CONTRACTS_DIR = path.join(__dirname, "../data/contracts/offline_seed");
-const REPORTS_DIR = path.join(__dirname, "../data/reports");
-const SUMMARY_PATH = path.join(REPORTS_DIR, "summary.json");
-
-fs.ensureDirSync(CONTRACTS_DIR);
-fs.ensureDirSync(REPORTS_DIR);
-
-// === Utility: Detect Slither executable ===
-function findSlither() {
+function runCommand(command, desc) {
   try {
-    const direct = execSync("which slither", { encoding: "utf8" }).trim();
-    if (direct) return direct;
-  } catch {}
+    console.log(`\n=== ${desc} ===`);
+    execSync(command, { stdio: "inherit" });
+  } catch (err) {
+    console.error(`❌ Error during ${desc}:`, err.message);
+  }
+}
 
-  // Fallback for virtual environments
-  const candidates = [
-    "~/.local/bin/slither",
-    "/usr/local/bin/slither",
-    "/usr/bin/slither",
-  ];
+async function main() {
+  console.log("\n=== AI Smart Contract Security Testbed ===");
+  console.log(`[${new Date().toISOString()}] Starting analysis...`);
 
-  for (const pathGuess of candidates) {
-    if (fs.existsSync(pathGuess.replace("~", process.env.HOME))) {
-      return pathGuess.replace("~", process.env.HOME);
+  // 1️⃣ Ensure directories exist
+  fs.ensureDirSync(CONTRACTS_DIR);
+  fs.ensureDirSync(REPORTS_DIR);
+
+  // 2️⃣ Verify contracts exist, else import
+  const contracts = fs.readdirSync(CONTRACTS_DIR).filter(f => f.endsWith(".sol"));
+  if (contracts.length === 0) {
+    console.log("⚠️ No contracts found — importing dataset...");
+    runCommand("npm run import:dataset", "Importing verified contracts dataset");
+  } else {
+    console.log(`✅ Loaded ${contracts.length} contracts.`);
+  }
+
+  // 3️⃣ Run analysis on all contracts
+  console.log("🔍 Running Slither analysis...");
+  for (const file of fs.readdirSync(CONTRACTS_DIR)) {
+    if (file.endsWith(".sol")) {
+      const inputPath = path.join(CONTRACTS_DIR, file);
+      const outputPath = path.join(REPORTS_DIR, `report_${path.basename(file, ".sol")}.json`);
+      console.log(`\nAnalyzing ${file}...`);
+      try {
+        execSync(`python3 -m slither ${inputPath} --json ${outputPath}`, { stdio: "inherit" });
+      } catch (err) {
+        console.error(`⚠️ Slither error on ${file}: continuing...`);
+      }
     }
   }
 
-  // Last resort: Python fallback
-  return "python3 -m slither";
+  // 4️⃣ Generate summary
+  console.log("\n🧩 Generating vulnerability summary...");
+  runCommand(`node ${SUMMARY_SCRIPT}`, "Summarizing reports");
+
+  console.log("\n✅ Pipeline complete.");
+  console.log(`📁 Reports saved in: ${REPORTS_DIR}`);
+  console.log(`📝 Summary: ${path.join(REPORTS_DIR, "summary_readable.txt")}`);
 }
 
-// === Pipeline start ===
-console.log(chalk.cyanBright("\n=== AI Smart Contract Security Testbed ==="));
-console.log(chalk.gray(`[${new Date().toISOString()}] Starting analysis...`));
-
-const slitherCmd = "python3 -m slither";
-console.log(chalk.gray(`Using analyzer: ${slitherCmd}\n`));
-
-// === Load dataset ===
-const contracts = fs
-  .readdirSync(CONTRACTS_DIR)
-  .filter((f) => f.endsWith(".sol"));
-
-if (contracts.length === 0) {
-  console.log(chalk.yellow("⚠️  No Solidity contracts found in dataset."));
-  console.log(chalk.gray("Tip: Run `npm run import:dataset` to seed contracts.\n"));
-  process.exit(0);
-}
-
-console.log(chalk.green(`🧩 Loaded ${contracts.length} contracts.\n`));
-
-// === Analyze each contract ===
-const results = [];
-for (const contract of contracts) {
-  const contractPath = path.join(CONTRACTS_DIR, contract);
-  const reportPath = path.join(
-    REPORTS_DIR,
-    `report_${path.basename(contract, ".sol")}.json`
-  );
-
-  console.log(chalk.blueBright(`🔍 Analyzing ${contract}...`));
-  try {
-    // Run Slither safely
-    // Use shell-based invocation to inherit full environment
-execSync(
-  `bash -c "python3 -m slither '${contractPath}' --json '${reportPath}'"`,
-  {
-    stdio: "inherit",
-    env: process.env,
-  }
-);
-
-
-    console.log(chalk.greenBright(`✅ Analysis complete: ${contract}`));
-    results.push({ contract, report: reportPath, status: "success" });
-  } catch (err) {
-    console.log(chalk.red(`❌ Error analyzing ${contract}`));
-
-    // Parse common errors for cleaner logs
-    const message =
-      err.stderr?.toString() ||
-      err.stdout?.toString() ||
-      err.message ||
-      "Unknown error";
-
-    fs.writeFileSync(
-      reportPath.replace(".json", "_error.log"),
-      message.substring(0, 5000)
-    );
-
-    results.push({ contract, report: reportPath, status: "failed" });
-  }
-}
-
-// === Save summary ===
-const summary = {
-  timestamp: new Date().toISOString(),
-  totalContracts: contracts.length,
-  successful: results.filter((r) => r.status === "success").length,
-  failed: results.filter((r) => r.status === "failed").length,
-  reports: results,
-};
-
-fs.writeJsonSync(SUMMARY_PATH, summary, { spaces: 2 });
-
-console.log(chalk.magentaBright(`\n📄 Summary saved: ${SUMMARY_PATH}`));
-console.log(chalk.green(`\n✅ Pipeline complete.\n`));
+main();
