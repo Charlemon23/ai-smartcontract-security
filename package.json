@@ -1,42 +1,31 @@
 {
   "name": "ai-smartcontract-security",
-  "version": "1.1.0",
-  "description": "AI-Enhanced Smart Contract Security Testbed — offline dataset analysis and ML-ready pipeline.",
-  "main": "scripts/run_pipeline.js",
+  "version": "1.2.0",
+  "description": "AI-Enhanced Smart Contract Security Testbed — offline dataset analysis, reproducible static scans, and human-readable reports.",
   "type": "module",
+  "main": "scripts/run_pipeline.js",
   "scripts": {
-    "start": "npm run run:pipeline",
     "run:pipeline": "node scripts/run_pipeline.js",
     "import:dataset": "node scripts/import_dataset.js",
-    "analyze:single": "node scripts/analyze_single.js",
     "summarize:reports": "node scripts/summarize_reports.js",
-    "clean": "rm -rf data/contracts/imported data/reports/* tmp/* || true",
-    "lint": "eslint . --ext .js",
-    "test": "echo 'No tests defined yet.'"
+    "clean": "rm -rf data/reports/* data/contracts/offline_seed/* || true",
+    "start": "npm run run:pipeline",
+    "test": "echo \"No tests yet\""
   },
-  "keywords": [
-    "smart-contract",
-    "security",
-    "ethereum",
-    "solidity",
-    "static-analysis",
-    "machine-learning",
-    "dataset"
-  ],
-  "author": "Charlemon London",
-  "license": "MIT",
   "dependencies": {
     "axios": "^1.7.4",
     "chalk": "^5.3.0",
     "dotenv": "^16.4.5",
     "extract-zip": "^2.0.1",
     "fs-extra": "^11.2.0",
-    "prettier": "^3.3.3"
+    "path": "^0.12.7"
   },
   "devDependencies": {
-    "eslint": "^9.10.0"
+    "eslint": "^9.10.0",
+    "prettier": "^3.3.3"
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "license": "MIT"
 }
