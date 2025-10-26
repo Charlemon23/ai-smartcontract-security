@@ -1,11 +1,16 @@
 # AI-Enhanced Smart Contract Security Testbed & Vulnerability Analyzer
 
-EVM-first MVP with a Node.js static scanner + Hardhat testbed. Solana support will be added in `/solana`.
+> Offline-first, reproducible static analysis for Solidity smart contracts with autonomous reporting.  
+> Built to remain fully functional even during cloud outages (e.g., the October 2025 AWS incident).
 
-## Quick start (Codespaces or local)
+## Why this exists
 
-```bash
-npm i
-npx hardhat compile
-npm test
-npm run scan
+Many blockchain auditing pipelines silently depend on centralized cloud services. When the October 2025 AWS outage disrupted dashboards and CI pipelines, analyses stalled.  
+This testbed is designed for **resilience**: it runs **entirely offline** and produces **deterministic** outputs suitable for research replication and classroom demonstration.
+
+## Architecture
+
+- **Dataset seeding (offline):** known Solidity contracts are stored under `data/contracts/offline_seed`.
+- **Analyzer engine:** invokes Slither via `python3 -m slither` to avoid PATH/venv issues.
+- **Reports:** machine-readable JSON under `data/reports/`.
+- **Summaries:** readable `summary_readable.txt` produced every run.
