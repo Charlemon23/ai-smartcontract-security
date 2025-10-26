@@ -1,20 +1,11 @@
 // scripts/import_dataset.js
 import fs from "fs-extra";
 import path from "path";
-import chalk from "chalk";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const DATA_DIR = "data/contracts/offline_seed";
 
-const DATA_DIR = path.join(__dirname, "../data/contracts/offline_seed");
-
-async function importDataset() {
-  console.log(chalk.cyanBright("\n=== Initializing Local Verified Contracts Dataset ===\n"));
-  fs.ensureDirSync(DATA_DIR);
-
-  const samples = {
-    "SafeBank.sol": `// SPDX-License-Identifier: MIT
+const samples = {
+  "SafeBank.sol": `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 contract SafeBank {
     mapping(address => uint) public balances;
@@ -26,16 +17,7 @@ contract SafeBank {
     }
 }`,
 
-    "GasDoS.sol": `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-contract GasDoS {
-    uint[] public data;
-    function add(uint n) public {
-        for (uint i = 0; i < n; i++) data.push(i);
-    }
-}`,
-
-    "VulnerableBank.sol": `// SPDX-License-Identifier: MIT
+  "VulnerableBank.sol": `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 contract VulnerableBank {
     mapping(address => uint) public balances;
@@ -43,13 +25,24 @@ contract VulnerableBank {
     function withdraw() public {
         uint amount = balances[msg.sender];
         require(amount > 0);
-        (bool success,) = msg.sender.call{value: amount}("");
-        require(success);
+        (bool ok,) = msg.sender.call{value: amount}("");
+        require(ok);
         balances[msg.sender] = 0;
     }
 }`,
 
-    "ERC20Token.sol": `// SPDX-License-Identifier: MIT
+  "GasDoS.sol": `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+contract GasDoS {
+    uint[] public data;
+    function add(uint n) public {
+        for (uint i = 0; i < n; i++) {
+            data.push(i);
+        }
+    }
+}`,
+
+  "ERC20Token.sol": `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 contract ERC20Token {
     string public name = "DemoToken";
@@ -67,15 +60,19 @@ contract ERC20Token {
         return true;
     }
 }`
-  };
+};
 
-  for (const [file, code] of Object.entries(samples)) {
-    const filePath = path.join(DATA_DIR, file);
-    fs.writeFileSync(filePath, code, "utf8");
+function seed() {
+  fs.ensureDirSync(DATA_DIR);
+  let created = 0;
+  for (const [name, code] of Object.entries(samples)) {
+    const p = path.join(DATA_DIR, name);
+    if (!fs.existsSync(p)) {
+      fs.writeFileSync(p, code, "utf8");
+      created++;
+    }
   }
-
-  console.log(chalk.greenBright(`✅ Local dataset initialized in ${DATA_DIR}`));
-  console.log(chalk.gray("Contains 4 verified Solidity contracts.\n"));
+  console.log(`✅ Local dataset ready at ${DATA_DIR} (${created} file(s) created or already present).`);
 }
 
-importDataset();
+seed();
