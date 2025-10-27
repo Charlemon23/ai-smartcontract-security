@@ -1,21 +1,22 @@
+// scripts/adapters/mythril_runner.js
 import { execSync } from "child_process";
 import fs from "fs-extra";
 import path from "path";
 
-const CONTRACTS_DIR = "data/contracts/offline_seed";
-const REPORTS_DIR = "data/reports/mythril";
-
-export async function runMythril() {
-  fs.ensureDirSync(REPORTS_DIR);
-  const sols = fs.readdirSync(CONTRACTS_DIR).filter(f => f.endsWith(".sol"));
-  for (const file of sols) {
+export function runMythril(CONTRACTS_DIR, REPORTS_DIR) {
+  console.log("\n🔍 Mythril Analyzer Started");
+  const outDir = path.join(REPORTS_DIR, "mythril");
+  fs.ensureDirSync(outDir);
+  const contracts = fs.readdirSync(CONTRACTS_DIR).filter(f => f.endsWith(".sol"));
+  for (const file of contracts) {
     const input = path.join(CONTRACTS_DIR, file);
-    const output = path.join(REPORTS_DIR, `mythril_${file.replace(".sol", ".json")}`);
-    console.log(`🔍 Mythril analyzing ${file}...`);
+    const output = path.join(outDir, `mythril_${file.replace(".sol", ".json")}`);
     try {
-      execSync(`myth analyze ${input} --execution-timeout 60 --outform json > ${output}`, { stdio: "inherit" });
-    } catch {
-      console.warn(`⚠️ Mythril failed on ${file}`);
+      execSync(`myth analyze "${input}" --execution-timeout 60 --outform json > "${output}"`, {
+        stdio: "inherit",
+      });
+    } catch (err) {
+      console.error(`⚠️ Mythril failed on ${file}: ${err.message}`);
     }
   }
   console.log("✅ Mythril analysis complete.");
