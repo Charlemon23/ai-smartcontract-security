@@ -12,5 +12,14 @@ This testbed is designed for **resilience**: it runs **entirely offline** and pr
 
 - **Dataset seeding (offline):** known Solidity contracts are stored under `data/contracts/offline_seed`.
 - **Analyzer engine:** invokes Slither via `python3 -m slither` to avoid PATH/venv issues.
+- ## Multi-Analyzer Support
+
+You can now select which analyzer to run:
+```bash
+npm run run:pipeline -- --tool=slither
+npm run run:pipeline -- --tool=mythril
+npm run run:pipeline -- --tool=oyente
+npm run run:pipeline -- --compare
+
 - **Reports:** machine-readable JSON under `data/reports/`.
 - **Summaries:** readable `summary_readable.txt` produced every run.
