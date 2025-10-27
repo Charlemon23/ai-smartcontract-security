@@ -1,27 +1,11 @@
-# === Core smart-contract analyzers ===
 slither-analyzer==0.10.3
 mythril==0.24.9
 oyente==0.3.9
-
-# === Solidity compiler management ===
 solc-select==0.2.1
 py-solc-x==2.0.3
-py-solc==3.2.0
-eth-hash==0.7.0
 eth-utils==2.3.1
-
-# === Dataset & utility dependencies ===
 requests==2.32.3
-urllib3==2.2.2
 tqdm==4.66.5
 colorama==0.4.6
 zipp==3.19.2
 unzipper==0.1.1
-
-# === JSON / CLI formatting ===
-prettytable==3.10.0
-simplejson==3.19.2
-
-# === Optional: Jupyter / development ===
-jupyterlab==4.3.0
-ipython==8.26.0
