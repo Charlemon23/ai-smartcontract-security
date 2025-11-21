@@ -1,7 +1,6 @@
-const fs = require("fs");
-const path = require("path");
-const solc = require("solc");
-
+import fs from "fs";
+import path from "path";
+import solc from "solc";
 export function readSolidityFiles(srcDir) {
   const files = [];
   const walk = d => {
@@ -15,7 +14,6 @@ export function readSolidityFiles(srcDir) {
   walk(srcDir);
   return files;
 }
-
 export function compileToAST(files) {
   const input = {
     language: "Solidity",
@@ -26,8 +24,7 @@ export function compileToAST(files) {
   };
   const output = JSON.parse(solc.compile(JSON.stringify(input)));
   if (output.errors && output.errors.some(e => e.severity === "error")) {
-    throw new Error(output.errors.map(e => e.formattedMessage).join("\n"));
+    throw new Error(output.errors.map(e => e.formattedMessage).join("\\n"));
   }
-  // return [{file, ast}]
   return Object.entries(output.sources).map(([file, obj]) => ({ file, ast: obj.ast }));
 }
